@@ -319,8 +319,19 @@ function ActivityReview({
     }
   }
 
+  function confirmCut(id: string) {
+    const c = contracts.find((x) => x.id === id);
+    if (!c) return;
+    if (!confirm(`Cut ${c.playerName}? This removes the contract entirely. Only do this once you've verified in Fleaflicker that they're really gone — "not found" can also mean a data mismatch, not a real cut.`)) return;
+    setContracts(contracts.filter((x) => x.id !== id));
+  }
+
+  function dismissCut(id: string) {
+    setSyncSummary((s) => (s ? { ...s, proposedCuts: s.proposedCuts.filter((p) => p.id !== id) } : s));
+  }
+
   const totalSyncChanges = syncSummary
-    ? syncSummary.cuts.length + syncSummary.trades.length + syncSummary.taxiChanges.length + syncSummary.irChanges.length
+    ? syncSummary.trades.length + syncSummary.taxiChanges.length + syncSummary.irChanges.length + syncSummary.proposedCuts.length
     : 0;
 
   return (
@@ -329,15 +340,15 @@ function ActivityReview({
         <div>
           <h1>Free agent review</h1>
           <p className="sub">
-            Trades, cuts, and taxi/IR are synced automatically from Fleaflicker's current rosters. Only new free
-            agent pickups need you to enter a cost below.
+            Trades and taxi/IR sync automatically from Fleaflicker. Cuts need a quick confirm below — a cut
+            removes a contract for good, so nothing gets deleted without a human double-check.
           </p>
         </div>
       </header>
 
       <div className="commissioner-bar">
         <button className="btn-primary" onClick={handleSync} disabled={syncing}>
-          {syncing ? 'Syncing…' : '🔄 Sync trades / cuts / taxi / IR'}
+          {syncing ? 'Syncing…' : '🔄 Sync trades + check for cuts'}
         </button>
         {syncError && <span className="login-error">{syncError}</span>}
       </div>
@@ -349,11 +360,6 @@ function ActivityReview({
             <p className="muted">No changes — everything already matches Fleaflicker's rosters.</p>
           ) : (
             <>
-              {syncSummary.cuts.map((name) => (
-                <p className="sync-line" key={`cut-${name}`}>
-                  Cut: <strong>{name}</strong> (no longer on any Fleaflicker roster)
-                </p>
-              ))}
               {syncSummary.trades.map((t) => (
                 <p className="sync-line" key={`trade-${t.name}`}>
                   Traded: <strong>{t.name}</strong> — {teamBySlug(t.from).name} → {teamBySlug(t.to).name}
@@ -369,10 +375,33 @@ function ActivityReview({
                   {line}
                 </p>
               ))}
+              {syncSummary.proposedCuts.map((cut) => (
+                <div className="add-form-row drop-row" key={cut.id}>
+                  <span>
+                    <strong>{cut.playerName}</strong> ({teamBySlug(cut.team).name}) — not found on any Fleaflicker
+                    roster
+                  </span>
+                  <button className="btn-tiny btn-danger" onClick={() => confirmCut(cut.id)}>
+                    Confirm cut
+                  </button>
+                  <button className="btn-tiny" onClick={() => dismissCut(cut.id)}>
+                    Not a real cut, ignore
+                  </button>
+                </div>
+              ))}
             </>
+          )}
+          {syncSummary.proposedCuts.length > 0 && (
+            <div className="commissioner-bar" style={{ marginTop: 12 }}>
+              <button className="btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save to server'}
+              </button>
+              {saveMsg && <span className="save-msg">{saveMsg}</span>}
+            </div>
           )}
         </section>
       )}
+
 
       {loadError && (
         <p className="footnote">
