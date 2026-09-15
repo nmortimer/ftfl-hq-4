@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAllContracts, saveAllContracts } from './_lib/store';
-import { teams } from '../src/data/teams';
+import { getAllContracts, saveAllContracts } from './_lib/store.js';
+import { teams } from '../src/data/teams.js';
 import type { Contract } from '../src/lib/contracts';
 
 function normalize(s: string): string {
