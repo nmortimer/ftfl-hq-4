@@ -29,7 +29,7 @@ interface RosterInfo {
  * /api/fleaflicker?endpoint=FetchLeagueRosters directly and send me what
  * comes back.
  */
-async function fetchRosterMap(leagueId: string, season: number): Promise<Map<string, RosterInfo>> {
+async function fetchRosterMap(leagueId: string, season: number): Promise<{ map: Map<string, RosterInfo>; rawSample: unknown }> {
   const url = `https://www.fleaflicker.com/api/FetchLeagueRosters?sport=NFL&league_id=${leagueId}&season=${season}`;
   const upstream = await fetch(url);
   if (!upstream.ok) {
@@ -59,7 +59,7 @@ async function fetchRosterMap(leagueId: string, season: number): Promise<Map<str
       }
     }
   }
-  return map;
+  return { map, rawSample: rosters[0] ?? data };
 }
 
 function isActiveThisYear(c: Contract, year: number): boolean {
@@ -82,10 +82,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const year = Number(req.query.year) || new Date().getFullYear();
 
   let rosterMap: Map<string, RosterInfo>;
+  let rawSample: unknown;
   try {
-    rosterMap = await fetchRosterMap(leagueId, year);
+    const result = await fetchRosterMap(leagueId, year);
+    rosterMap = result.map;
+    rawSample = result.rawSample;
   } catch (err: any) {
     return res.status(502).json({ error: `Failed to reach Fleaflicker: ${err?.message}` });
+  }
+
+  // SAFETY GUARD: an empty or near-empty roster map means the response
+  // shape didn't match what this code expects — NOT that your whole
+  // league quit. Refuse to touch any data rather than mass-cut everyone
+  // on a parsing failure. (This is exactly what went wrong before this
+  // guard existed.)
+  if (rosterMap.size < 5) {
+    return res.status(502).json({
+      error: `Fleaflicker's roster data only produced ${rosterMap.size} recognizable player(s) — that's almost certainly a parsing mismatch, not real data, so nothing was changed. Raw sample from the response: ${JSON.stringify(rawSample).slice(0, 800)}`,
+    });
   }
 
   const contracts = await getAllContracts();
@@ -140,6 +154,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     next.irYears = Array.from(irYears);
 
     updated.push(next);
+  }
+
+  // SAFETY GUARD #2: even with a healthy-sized roster map, refuse to save
+  // a result that cuts an implausible fraction of the active roster in
+  // one go — a real week never looks like this, a bad player-name match
+  // (accents, suffixes, "Jr."/"II", etc.) sometimes does.
+  const activeCount = contracts.filter((c) => isActiveThisYear(c, year)).length;
+  if (activeCount > 0 && summary.cuts.length / activeCount > 0.25) {
+    return res.status(502).json({
+      error: `This sync would cut ${summary.cuts.length} of ${activeCount} active players (over 25%) — that's far more than a normal week, so nothing was saved. This usually means player names aren't matching Fleaflicker's roster data correctly (e.g. "Jr."/suffixes, accents). Players it would have cut: ${summary.cuts.slice(0, 15).join(', ')}${summary.cuts.length > 15 ? '…' : ''}`,
+    });
   }
 
   try {
