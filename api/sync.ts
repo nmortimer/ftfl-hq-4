@@ -49,17 +49,34 @@ interface RosterInfo {
  * this file has hit twice before).
  */
 async function fetchRosterMap(leagueId: string, season: number): Promise<{ map: Map<string, RosterInfo>; rawSample: unknown }> {
-  const results = await Promise.all(
+  // Promise.allSettled (not Promise.all) so that if MULTIPLE teams fail,
+  // the error message below can say so — Promise.all only ever surfaces
+  // the first rejection, which made a previous failure here look like
+  // "just Elkhart" when it may well have been every team.
+  const settled = await Promise.allSettled(
     teams.map(async (team) => {
-      const url = `https://www.fleaflicker.com/api/FetchRoster?sport=NFL&league_id=${leagueId}&team_id=${team.fleaflickerId}&season=${season}`;
+      // NOTE: no `season` param here on purpose — Nick's manual test that
+      // confirmed this endpoint's shape used exactly this URL (sport,
+      // league_id, team_id only) with no season param, and it worked. An
+      // earlier version of this code added `&season=${season}` without
+      // testing it, which is the most likely reason a 400 showed up here.
+      const url = `https://www.fleaflicker.com/api/FetchRoster?sport=NFL&league_id=${leagueId}&team_id=${team.fleaflickerId}`;
       const upstream = await fetch(url);
       if (!upstream.ok) {
-        throw new Error(`FetchRoster failed for ${team.name} (HTTP ${upstream.status})`);
+        throw new Error(`${team.name} (HTTP ${upstream.status})`);
       }
       const data = await upstream.json();
       return { team, data };
     })
   );
+
+  const failures = settled.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+  if (failures.length > 0) {
+    const messages = failures.map((f) => f.reason?.message ?? String(f.reason));
+    throw new Error(`${failures.length} of ${teams.length} team fetches failed: ${messages.join('; ')}`);
+  }
+
+  const results = (settled as PromiseFulfilledResult<{ team: (typeof teams)[number]; data: any }>[]).map((r) => r.value);
 
   const map = new Map<string, RosterInfo>();
   for (const { team, data } of results) {
