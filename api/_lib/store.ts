@@ -10,7 +10,7 @@
 // standard connection string. This version uses the plain `redis`
 // client against that instead.
 import { createClient, type RedisClientType } from 'redis';
-import { realContracts } from '../../src/data/realContracts';
+import { realContracts } from '../../src/data/realContracts.js';
 import type { Contract } from '../../src/lib/contracts';
 
 const KEY = 'ftfl:contracts';
