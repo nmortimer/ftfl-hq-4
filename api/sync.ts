@@ -138,7 +138,7 @@ async function fetchReserveStatusMap(leagueId: string): Promise<Map<string, Rese
 }
 
 function isActiveThisYear(c: Contract, year: number): boolean {
-  if (c.kind === 'imported') return c.yearSalaries[year] != null;
+  if (c.kind === 'imported' || c.kind === 'buyout') return c.yearSalaries[year] != null;
   const yearsIn = year - c.startYear;
   return yearsIn >= 0 && yearsIn < c.lengthYears;
 }
@@ -195,6 +195,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // the commissioner confirms each one explicitly on the FA Review page.
   const updated: Contract[] = [];
   for (const c of contracts) {
+    // Buyouts are cap-space lines for a player who's already gone — never
+    // a live Fleaflicker roster entry, so never matched/traded/cut here.
+    if (c.kind === 'buyout') {
+      updated.push(c);
+      continue;
+    }
     if (!isActiveThisYear(c, year)) {
       updated.push(c);
       continue;
