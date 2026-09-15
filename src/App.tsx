@@ -33,6 +33,19 @@ import {
 const YEARS = [2025, 2026, 2027, 2028, 2029];
 const POSITIONS = ['QB', 'RB', 'WR', 'TE'];
 
+/** Same suffix/punctuation-stripping logic as api/sync.ts's normalize —
+ * keeps "Michael Pittman Jr." and "Michael Pittman" matching here too. */
+function normalizePlayerName(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[.,'']/g, '')
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function money(n: number | null): string {
   if (n == null) return '—';
   return `$${n}`;
@@ -247,7 +260,7 @@ function ActivityReview({
   }, []);
 
   const findContract = (playerName: string) =>
-    contracts.find((c) => c.playerName.trim().toLowerCase() === playerName.trim().toLowerCase() && salaryInYear(c, year) != null);
+    contracts.find((c) => normalizePlayerName(c.playerName) === normalizePlayerName(playerName) && salaryInYear(c, year) != null);
 
   const faItems = (activity ?? []).filter((a) => a.kind === 'transaction' && a.playerName && !findContract(a.playerName));
   const otherItems = (activity ?? []).filter((a) => !faItems.includes(a) && a.kind !== 'drop');
