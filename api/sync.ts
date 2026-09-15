@@ -3,8 +3,28 @@ import { getAllContracts, saveAllContracts } from './_lib/store.js';
 import { teams } from '../src/data/teams.js';
 import type { Contract } from '../src/lib/contracts';
 
+/**
+ * Name matching is intentionally aggressive about stripping formatting
+ * differences — suffixes (Jr./Sr./II/III/IV) and punctuation are the most
+ * common way the same real player fails to match between two data
+ * sources. Stripping them from BOTH sides before comparing means
+ * "Michael Pittman Jr." and "Michael Pittman Jr" and "Michael Pittman"
+ * all normalize identically. Collision risk (two different active NFL
+ * players sharing a name once suffixes are stripped) is negligible in
+ * practice — the real, observed risk was the opposite: exact-match
+ * failures wrongly cutting real players (Mahomes, Pittman, Etienne,
+ * Penix, Walker all got wrongly cut by the old plain-lowercase version
+ * of this function).
+ */
 function normalize(s: string): string {
-  return s.trim().toLowerCase();
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip accents (é -> e, etc.)
+    .replace(/[.,'']/g, '') // strip periods, commas, apostrophes
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '') // strip generational suffixes entirely
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 interface RosterInfo {
