@@ -31,7 +31,22 @@ export interface FormulaContract extends BaseContract {
   lengthYears: number;
 }
 
-export type Contract = ImportedContract | FormulaContract;
+/**
+ * What a cut becomes now — not a deletion. Confirmed rule: for every year
+ * that would have remained on the deal, the buyout costs 50% of THAT
+ * year's contracted salary, rounded up PER YEAR (not summed then rounded
+ * once — a $5 year becomes a $3 buyout year on its own). A buyout always
+ * counts against the cap (see countsAgainstCap) but never occupies a
+ * roster/taxi/IR spot (see rosterCount) — it's a cap-space line only.
+ * Shares the `yearSalaries` shape with ImportedContract on purpose so
+ * activeYears/salaryInYear need no separate branch for it.
+ */
+export interface BuyoutContract extends BaseContract {
+  kind: 'buyout';
+  yearSalaries: Record<number, number>;
+}
+
+export type Contract = ImportedContract | FormulaContract | BuyoutContract;
 
 export const SALARY_CAP = 200;
 
@@ -44,7 +59,7 @@ export function annualIncrement(baseSalary: number): number {
 
 /** Every year this contract has a salary on record, sorted ascending. */
 export function activeYears(contract: Contract): number[] {
-  if (contract.kind === 'imported') {
+  if (contract.kind === 'imported' || contract.kind === 'buyout') {
     return Object.keys(contract.yearSalaries)
       .map(Number)
       .sort((a, b) => a - b);
@@ -108,7 +123,7 @@ export function projectedResignCost(contract: Contract): number | null {
  * record for that year (expired, not started, or simply not entered).
  */
 export function salaryInYear(contract: Contract, year: number): number | null {
-  if (contract.kind === 'imported') {
+  if (contract.kind === 'imported' || contract.kind === 'buyout') {
     return contract.yearSalaries[year] ?? null;
   }
   const yearsIn = year - contract.startYear;
@@ -122,17 +137,30 @@ export function yearsRemaining(contract: Contract, asOfYear: number): number {
 }
 
 /**
- * Confirmed rule: cutting a player costs 50% of their CURRENT salary
- * (the rate in the year of the cut), applied flatly across every
- * remaining contract year — not the escalating future rate for each
- * year. One rounding at the end, not per-year.
- * Example: $5 current salary, 1 year remaining → ceil(5 * 0.5 * 1) = 3.
+ * Confirmed rule: a cut is a buyout, not a deletion. For every year that
+ * would have remained on the deal (cutYear through the contract's own
+ * end year), the buyout owes 50% of THAT year's contracted salary,
+ * rounded up separately for each year — not summed first and rounded
+ * once. Example: a $5 year becomes a $3 buyout year on its own, not
+ * folded into one lump total. This is the schedule a cut actually
+ * produces (see App.tsx's cutContract/confirmCut, which turn a
+ * contract into a BuyoutContract using exactly this map).
  */
+export function buyoutScheduleFromCut(contract: Contract, cutYear: number): Record<number, number> {
+  const schedule: Record<number, number> = {};
+  const end = endYear(contract);
+  for (let y = cutYear; y <= end; y++) {
+    const salary = salaryInYear(contract, y);
+    if (salary == null) continue;
+    schedule[y] = Math.ceil(salary * 0.5);
+  }
+  return schedule;
+}
+
+/** Total buyout cost across every remaining year, for the "if cut now" preview column. */
 export function cutPenalty(contract: Contract, cutYear: number): number {
-  const current = salaryInYear(contract, cutYear);
-  if (current == null) return 0;
-  const remaining = yearsRemaining(contract, cutYear);
-  return Math.ceil(current * 0.5 * remaining);
+  const schedule = buyoutScheduleFromCut(contract, cutYear);
+  return Object.values(schedule).reduce((sum, v) => sum + v, 0);
 }
 
 export function isTaxi(contract: Contract, year: number): boolean {
@@ -163,8 +191,13 @@ export function contractsForTeam(contracts: Contract[], teamSlug: string): Contr
   return contracts.filter((c) => c.team === teamSlug);
 }
 
+/** Confirmed rule: a buyout is a cap-hit-only line — it never occupies a roster spot. */
+export function isBuyout(contract: Contract): contract is BuyoutContract {
+  return contract.kind === 'buyout';
+}
+
 export function rosterCount(contracts: Contract[], year: number): number {
-  return contracts.filter((c) => salaryInYear(c, year) != null && countsAgainstCap(c, year)).length;
+  return contracts.filter((c) => !isBuyout(c) && salaryInYear(c, year) != null && countsAgainstCap(c, year)).length;
 }
 
 export function taxiCount(contracts: Contract[], year: number): number {
