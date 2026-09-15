@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAllContracts, saveAllContracts } from './_lib/store';
-import { checkCommissionerPassword } from './_lib/auth';
+import { getAllContracts, saveAllContracts } from './_lib/store.js';
+import { checkCommissionerPassword } from './_lib/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
