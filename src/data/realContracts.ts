@@ -11,7 +11,7 @@ import type { Contract } from '../lib/contracts';
 export const realContracts: Contract[] = [
   // --- Boulder Bandits ---
   { id: '1', kind: 'imported', playerName: 'Jordan Love', position: 'QB', team: 'boulder-bandits', yearSalaries: { 2023: 7, 2024: 10, 2025: 10, 2026: 10, 2027: 10 } },
-  { id: '2', kind: 'imported', playerName: 'Jacoby Brisset', position: 'QB', team: 'boulder-bandits', yearSalaries: { 2026: 1 } },
+  { id: '2', kind: 'imported', playerName: 'Jacoby Brissett', position: 'QB', team: 'boulder-bandits', yearSalaries: { 2026: 1 } },
   { id: '3', kind: 'imported', playerName: 'Saquon Barkley', position: 'RB', team: 'boulder-bandits', yearSalaries: { 2018: 20, 2019: 20, 2020: 20, 2021: 20, 2022: 32, 2023: 32, 2024: 42, 2025: 42, 2026: 52 } },
   { id: '4', kind: 'imported', playerName: 'Jonathan Taylor', position: 'RB', team: 'boulder-bandits', yearSalaries: { 2020: 10, 2021: 10, 2022: 16, 2023: 16, 2024: 16, 2025: 25, 2026: 25, 2027: 25 } },
   { id: '5', kind: 'imported', playerName: 'James Cook', position: 'RB', team: 'boulder-bandits', yearSalaries: { 2022: 5, 2023: 5, 2024: 5, 2025: 14, 2026: 14 } },
@@ -29,7 +29,7 @@ export const realContracts: Contract[] = [
   // --- Broad Ripple Big Horns ---
   { id: '16', kind: 'imported', playerName: 'Lamar Jackson', position: 'QB', team: 'broad-ripple-big-horns', yearSalaries: { 2018: 2, 2019: 2, 2020: 16, 2021: 16, 2022: 16, 2023: 16, 2024: 28, 2025: 28, 2026: 28, 2027: 28 } },
   { id: '17', kind: 'imported', playerName: 'Bo Nix', position: 'QB', team: 'broad-ripple-big-horns', yearSalaries: { 2024: 1, 2025: 1, 2026: 10, 2027: 10, 2028: 10, 2029: 10 } },
-  { id: '18', kind: 'imported', playerName: 'Kenneth Gainwell', position: 'RB', team: 'broad-ripple-big-horns', yearSalaries: { 2025: 1, 2026: 3, 2027: 3, 2028: 3 } },
+  { id: '18', kind: 'imported', playerName: 'Kenny Gainwell', position: 'RB', team: 'broad-ripple-big-horns', yearSalaries: { 2025: 1, 2026: 3, 2027: 3, 2028: 3 } },
   { id: '19', kind: 'imported', playerName: 'DJ Giddens', position: 'RB', team: 'broad-ripple-big-horns', yearSalaries: { 2025: 2, 2026: 2 } },
   { id: '20', kind: 'imported', playerName: 'Chase Brown', position: 'RB', team: 'broad-ripple-big-horns', yearSalaries: { 2023: 1, 2024: 1, 2025: 12, 2026: 12 } },
   { id: '21', kind: 'imported', playerName: 'David Montgomery', position: 'RB', team: 'broad-ripple-big-horns', yearSalaries: { 2026: 22 } },
@@ -49,7 +49,7 @@ export const realContracts: Contract[] = [
   { id: '35', kind: 'imported', playerName: 'Tahj Brooks', position: '', team: 'broad-ripple-big-horns', yearSalaries: { 2025: 1, 2026: 1 }, taxiYears: [2025, 2026] },
   { id: '36', kind: 'imported', playerName: 'Malachi Fields', position: '', team: 'broad-ripple-big-horns', yearSalaries: { 2026: 3, 2027: 3 }, taxiYears: [2026, 2027] },
   { id: '37', kind: 'imported', playerName: 'Bryce Lance', position: '', team: 'broad-ripple-big-horns', yearSalaries: { 2026: 1, 2027: 1 }, taxiYears: [2026, 2027] },
-  { id: '38', kind: 'imported', playerName: 'Deoin Burks', position: '', team: 'broad-ripple-big-horns', yearSalaries: { 2026: 1, 2027: 1 }, taxiYears: [2026, 2027] },
+  { id: '38', kind: 'imported', playerName: 'Deion Burks', position: '', team: 'broad-ripple-big-horns', yearSalaries: { 2026: 1, 2027: 1 }, taxiYears: [2026, 2027] },
   { id: '39', kind: 'imported', playerName: 'Adam Randall', position: '', team: 'broad-ripple-big-horns', yearSalaries: { 2026: 1, 2027: 1, 2028: 1 }, irYears: [2026, 2027, 2028] },
 
   // --- Denver Diamondbacks ---
@@ -75,7 +75,7 @@ export const realContracts: Contract[] = [
   { id: '59', kind: 'imported', playerName: 'Chris Bell', position: 'WR', team: 'denver-diamondbacks', yearSalaries: { 2026: 3, 2027: 3 } },
   { id: '60', kind: 'imported', playerName: 'Mark Andrews', position: 'TE', team: 'denver-diamondbacks', yearSalaries: { 2018: 2, 2019: 2, 2020: 10, 2021: 10, 2022: 10, 2023: 10, 2024: 22, 2025: 22, 2026: 22, 2027: 22 } },
   { id: '61', kind: 'imported', playerName: 'Isaiah Likely', position: 'TE', team: 'denver-diamondbacks', yearSalaries: { 2024: 2, 2025: 4, 2026: 4 } },
-  { id: '62', kind: 'imported', playerName: 'Jaylen Noel', position: '', team: 'denver-diamondbacks', yearSalaries: { 2025: 1, 2026: 1 }, taxiYears: [2025, 2026] },
+  { id: '62', kind: 'imported', playerName: 'Jaylin Noel', position: '', team: 'denver-diamondbacks', yearSalaries: { 2025: 1, 2026: 1 }, taxiYears: [2025, 2026] },
   { id: '63', kind: 'imported', playerName: 'Antonio Williams', position: '', team: 'denver-diamondbacks', yearSalaries: { 2026: 3, 2027: 3 }, taxiYears: [2026, 2027] },
   { id: '64', kind: 'imported', playerName: 'Jack Bech', position: '', team: 'denver-diamondbacks', yearSalaries: { 2025: 3, 2026: 3, 2027: 3 }, taxiYears: [2025, 2026, 2027] },
   { id: '65', kind: 'imported', playerName: 'Ted Hurst', position: '', team: 'denver-diamondbacks', yearSalaries: { 2026: 2, 2027: 2 }, taxiYears: [2026, 2027] },
@@ -113,16 +113,16 @@ export const realContracts: Contract[] = [
   { id: '93', kind: 'imported', playerName: 'TreVeyon Henderson', position: 'RB', team: 'kansas-city-kaiju', yearSalaries: { 2025: 10, 2026: 10, 2027: 10 } },
   { id: '94', kind: 'imported', playerName: 'Rhamondre Stevenson', position: 'RB', team: 'kansas-city-kaiju', yearSalaries: { 2021: 1, 2022: 1, 2023: 12, 2024: 12, 2025: 12, 2026: 12 } },
   { id: '95', kind: 'imported', playerName: 'Blake Corum', position: 'RB', team: 'kansas-city-kaiju', yearSalaries: { 2024: 3, 2025: 3, 2026: 7 } },
-  { id: '96', kind: 'imported', playerName: 'Jayden Ott', position: 'RB', team: 'kansas-city-kaiju', yearSalaries: { 2026: 1, 2027: 1 } },
+  { id: '96', kind: 'imported', playerName: 'Jaydn Ott', position: 'RB', team: 'kansas-city-kaiju', yearSalaries: { 2026: 1, 2027: 1 } },
   { id: '97', kind: 'imported', playerName: 'Kaelon Black', position: 'RB', team: 'kansas-city-kaiju', yearSalaries: { 2026: 2, 2027: 2 } },
-  { id: '98', kind: 'imported', playerName: 'Rchaad White', position: 'RB', team: 'kansas-city-kaiju', yearSalaries: { 2026: 14 } },
+  { id: '98', kind: 'imported', playerName: 'Rachaad White', position: 'RB', team: 'kansas-city-kaiju', yearSalaries: { 2026: 14 } },
   { id: '99', kind: 'imported', playerName: 'Kimani Vidal', position: 'RB', team: 'kansas-city-kaiju', yearSalaries: { 2026: 1, 2027: 1 } },
   { id: '100', kind: 'imported', playerName: 'Amon-Ra St. Brown', position: 'WR', team: 'kansas-city-kaiju', yearSalaries: { 2021: 2, 2022: 2, 2023: 2, 2024: 14, 2025: 14, 2026: 14, 2027: 14 } },
   { id: '101', kind: 'imported', playerName: 'A.J. Brown', position: 'WR', team: 'kansas-city-kaiju', yearSalaries: { 2019: 6, 2020: 6, 2021: 6, 2022: 12, 2023: 12, 2024: 12, 2025: 12, 2026: 24, 2027: 24, 2028: 24, 2029: 24 } },
   { id: '102', kind: 'imported', playerName: 'Garrett Wilson', position: 'WR', team: 'kansas-city-kaiju', yearSalaries: { 2022: 6, 2023: 6, 2024: 6, 2025: 12, 2026: 12, 2027: 12, 2028: 12 } },
   { id: '103', kind: 'imported', playerName: 'Jordan Addison', position: 'WR', team: 'kansas-city-kaiju', yearSalaries: { 2023: 6, 2024: 6, 2025: 6, 2026: 12, 2027: 12, 2028: 12, 2029: 12 } },
   { id: '104', kind: 'imported', playerName: 'Terry Mclaurin', position: 'WR', team: 'kansas-city-kaiju', yearSalaries: { 2019: 1, 2020: 1, 2021: 5, 2022: 5, 2023: 5, 2024: 5, 2025: 13, 2026: 13, 2027: 13, 2028: 13 } },
-  { id: '105', kind: 'imported', playerName: 'Brenan Thompson', position: 'WR', team: 'kansas-city-kaiju', yearSalaries: { 2026: 1, 2027: 1 } },
+  { id: '105', kind: 'imported', playerName: 'Brenen Thompson', position: 'WR', team: 'kansas-city-kaiju', yearSalaries: { 2026: 1, 2027: 1 } },
   { id: '106', kind: 'imported', playerName: 'Jake Ferguson', position: 'TE', team: 'kansas-city-kaiju', yearSalaries: { 2023: 2, 2024: 8, 2025: 8, 2026: 12, 2027: 12, 2028: 12 } },
   { id: '107', kind: 'imported', playerName: 'Kenyon Sadiq', position: 'TE', team: 'kansas-city-kaiju', yearSalaries: { 2026: 7, 2027: 7 } },
   { id: '108', kind: 'imported', playerName: 'Brenton Strange', position: 'TE', team: 'kansas-city-kaiju', yearSalaries: { 2026: 1, 2027: 1 } },
@@ -261,5 +261,25 @@ export const realContracts: Contract[] = [
   { id: '231', kind: 'imported', playerName: 'De\'Zhaun Stribling', position: '', team: 'wakarusa-wizards', yearSalaries: { 2026: 3, 2027: 3 }, taxiYears: [2026, 2027] },
   { id: '232', kind: 'imported', playerName: 'Zachariah Branch', position: '', team: 'wakarusa-wizards', yearSalaries: { 2026: 2, 2027: 2 }, taxiYears: [2026, 2027] },
   { id: '233', kind: 'imported', playerName: 'Seth McGowan', position: '', team: 'wakarusa-wizards', yearSalaries: { 2026: 1, 2027: 1 }, taxiYears: [2026, 2027] },
+
+  // Pre-existing buyouts from the original spreadsheet's "BUY OUTS" side tables (one per
+  // team sheet, same shape as the TAXI SQUAD / INJURED RESERVE tables). These predate this
+  // app entirely and were never imported before now — the original import script only ever
+  // looked for "TAXI SQUAD" and "INJURED RESERVE". Full historical schedule kept, same as
+  // every other imported contract; only 2025/2026 entries actually affect current cap math.
+  { id: '234', kind: 'buyout', playerName: 'Austin Ekeler', position: '', team: 'denver-diamondbacks', yearSalaries: { 2025: 2, 2026: 1 } },
+  { id: '235', kind: 'buyout', playerName: 'Nick Chubb', position: '', team: 'denver-diamondbacks', yearSalaries: { 2025: 4, 2026: 2 } },
+  { id: '236', kind: 'buyout', playerName: 'Ja\'Lynn Polk', position: '', team: 'denver-diamondbacks', yearSalaries: { 2024: 3, 2025: 3, 2026: 1 } },
+  { id: '237', kind: 'buyout', playerName: 'JJ McCarthy', position: '', team: 'denver-diamondbacks', yearSalaries: { 2026: 3 } },
+  { id: '238', kind: 'buyout', playerName: 'Trevor Lawrence', position: '', team: 'south-bend-silver-hawks', yearSalaries: { 2021: 4, 2022: 4, 2023: 13, 2024: 13, 2025: 7, 2026: 7 } },
+  { id: '239', kind: 'buyout', playerName: 'Greg Dulcich', position: '', team: 'south-bend-silver-hawks', yearSalaries: { 2022: 1, 2023: 3, 2024: 3, 2025: 2, 2026: 2 } },
+  { id: '240', kind: 'buyout', playerName: 'Zamir White', position: '', team: 'south-bend-silver-hawks', yearSalaries: { 2022: 2, 2023: 2, 2024: 6, 2025: 3, 2026: 3 } },
+  { id: '241', kind: 'buyout', playerName: 'Pat Freiermuth', position: '', team: 'south-bend-silver-hawks', yearSalaries: { 2021: 2, 2022: 2, 2023: 3, 2024: 3, 2025: 3, 2026: 3 } },
+  { id: '242', kind: 'buyout', playerName: 'Gerald Everett', position: '', team: 'strasbourg-soldiers', yearSalaries: { 2021: 1, 2022: 3, 2023: 5, 2024: 3, 2025: 3, 2026: 3 } },
+  { id: '243', kind: 'buyout', playerName: 'Trevor Etienne', position: '', team: 'strasbourg-soldiers', yearSalaries: { 2025: 1, 2026: 1 } },
+  { id: '244', kind: 'buyout', playerName: 'Jordan Mason', position: '', team: 'strasbourg-soldiers', yearSalaries: { 2025: 4, 2026: 4 } },
+  { id: '245', kind: 'buyout', playerName: 'Chigoziem Okonkwo', position: '', team: 'strasbourg-soldiers', yearSalaries: { 2022: 1, 2023: 3, 2024: 2, 2025: 3, 2026: 3 } },
+  { id: '246', kind: 'buyout', playerName: 'Mason Taylor', position: '', team: 'strasbourg-soldiers', yearSalaries: { 2025: 1, 2026: 1 } },
+  { id: '247', kind: 'buyout', playerName: 'Chase Claypool', position: '', team: 'wakarusa-wizards', yearSalaries: { 2020: 1, 2021: 1, 2022: 5, 2023: 5, 2024: 3, 2025: 3 } },
 
 ];
