@@ -14,20 +14,22 @@ interface RosterInfo {
 }
 
 /**
- * IMPORTANT — confidence level on this endpoint's shape:
- * FetchRoster (single team) was confirmed against Fleaflicker's official
- * docs: { groups: [{ group: string, slots: [{ position, leaguePlayer:
- * { proPlayer: { nameFull, ... } } }] }] }, with group values BENCH /
- * START / INJURED / TAXI (confirmed as a real enum elsewhere in the same
- * docs). FetchLeagueRosters (ALL teams, no team_id needed — used here to
- * avoid 10 separate calls) is assumed to wrap that same per-team shape
- * inside a `rosters: [{ team, groups }]` array, since it reuses
- * Fleaflicker's own "LeagueRoster" type — but that specific nesting was
- * never seen in a real response. If sync silently does nothing (0
- * cuts/trades/taxi changes every time, even when you know something
- * happened), this is the first place to check — hit
- * /api/fleaflicker?endpoint=FetchLeagueRosters directly and send me what
- * comes back.
+ * CONFIRMED against a real response from this league (Nick pasted it
+ * after the safety guard correctly refused to run on the old, wrong
+ * shape). The actual structure: `{ rosters: [{ team, players: [{
+ * proPlayer: { nameFull, ... } }] }] }` — flat, no groups/slots nesting
+ * at all. The old code assumed a groups/slots wrapper borrowed from
+ * FetchRoster's docs; that assumption was wrong, which is exactly what
+ * produced 0 matches and triggered the safety guard.
+ *
+ * Still open: taxi/IR status per player. The sample that came back was
+ * truncated before reaching that part of a player object, so isTaxi/isIR
+ * below are a best-effort guess at a few plausible field names — if none
+ * of them match, they safely default to false rather than guessing wrong
+ * in the dangerous direction. If taxi/IR sync doesn't seem to be working,
+ * that's the next thing to verify with one more real sample (ideally a
+ * player who's actually on taxi or IR, so the differentiating field is
+ * visible).
  */
 async function fetchRosterMap(leagueId: string, season: number): Promise<{ map: Map<string, RosterInfo>; rawSample: unknown }> {
   const url = `https://www.fleaflicker.com/api/FetchLeagueRosters?sport=NFL&league_id=${leagueId}&season=${season}`;
@@ -44,19 +46,21 @@ async function fetchRosterMap(leagueId: string, season: number): Promise<{ map: 
     const matchedTeam = teams.find((t) => t.name.trim().toLowerCase() === (teamName ?? '').trim().toLowerCase());
     if (!matchedTeam) continue;
 
-    const groups = rosterEntry?.groups ?? [];
-    for (const g of groups) {
-      const groupLabel = g?.group;
-      const slots = g?.slots ?? [];
-      for (const slot of slots) {
-        const playerName = slot?.leaguePlayer?.proPlayer?.nameFull;
-        if (!playerName) continue;
-        map.set(normalize(playerName), {
-          teamSlug: matchedTeam.slug,
-          isTaxi: groupLabel === 'TAXI',
-          isIR: groupLabel === 'INJURED',
-        });
-      }
+    const players = rosterEntry?.players ?? [];
+    for (const player of players) {
+      const playerName = player?.proPlayer?.nameFull;
+      if (!playerName) continue;
+
+      // Best-effort guess at taxi/IR — see note above. Checks a few
+      // plausible shapes; defaults to false (not taxi, not IR) if none
+      // of them match anything.
+      const slotLabel = String(
+        player?.rosterSlot?.name ?? player?.rosterSlot?.label ?? player?.slot?.name ?? player?.status ?? ''
+      );
+      const isTaxi = /taxi/i.test(slotLabel) || player?.isTaxi === true;
+      const isIR = /injured|^ir$/i.test(slotLabel) || player?.isInjuredReserve === true;
+
+      map.set(normalize(playerName), { teamSlug: matchedTeam.slug, isTaxi, isIR });
     }
   }
   return { map, rawSample: rosters[0] ?? data };
@@ -98,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // guard existed.)
   if (rosterMap.size < 5) {
     return res.status(502).json({
-      error: `Fleaflicker's roster data only produced ${rosterMap.size} recognizable player(s) — that's almost certainly a parsing mismatch, not real data, so nothing was changed. Raw sample from the response: ${JSON.stringify(rawSample).slice(0, 800)}`,
+      error: `Fleaflicker's roster data only produced ${rosterMap.size} recognizable player(s) — that's almost certainly a parsing mismatch, not real data, so nothing was changed. Raw sample from the response: ${JSON.stringify(rawSample).slice(0, 2500)}`,
     });
   }
 
