@@ -163,17 +163,28 @@ export async function fetchFleaflickerActivity(): Promise<FleaflickerActivityIte
   }
 }
 
+export interface ProposedCut {
+  id: string;
+  playerName: string;
+  team: string;
+}
+
 export interface SyncSummary {
-  cuts: string[];
   trades: { name: string; from: string; to: string }[];
   taxiChanges: string[];
   irChanges: string[];
+  proposedCuts: ProposedCut[];
 }
 
 /**
- * Runs the server-side reconciliation (trades/cuts/taxi/IR) against
- * Fleaflicker's current rosters and saves the result immediately —
- * no per-item confirmation, one click does everything.
+ * Runs the server-side reconciliation against Fleaflicker's current
+ * rosters (per-team FetchRoster, confirmed against a real response —
+ * see api/sync.ts). Trades and taxi/IR are applied and saved
+ * automatically now that the underlying fields are confirmed, not
+ * guessed. Cuts are still NOT applied automatically — "not found on any
+ * roster" has caused real failures before from unrelated causes, so
+ * cuts only ever come back as proposals for the commissioner to confirm
+ * individually, regardless of how reliable the rest of this has proven.
  */
 export async function syncFromFleaflicker(year: number): Promise<{ ok: boolean; summary?: SyncSummary; error?: string }> {
   try {
