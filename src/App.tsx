@@ -12,12 +12,15 @@ import {
   SyncSummary,
 } from './lib/api';
 import {
+  BuyoutContract,
   Contract,
   SALARY_CAP,
+  buyoutScheduleFromCut,
   contractsForTeam,
   cutPenalty,
   endYear,
   irCount,
+  isBuyout,
   isIR,
   isTaxi,
   projectedResignCost,
@@ -29,6 +32,18 @@ import {
   teamCapUsed,
   yearsRemaining,
 } from './lib/contracts';
+
+/** A cut is now a buyout, not a deletion — see buyoutScheduleFromCut for the per-year math. */
+function toBuyout(contract: Contract, cutYear: number): BuyoutContract {
+  return {
+    id: contract.id,
+    kind: 'buyout',
+    playerName: contract.playerName,
+    position: contract.position,
+    team: contract.team,
+    yearSalaries: buyoutScheduleFromCut(contract, cutYear),
+  };
+}
 
 const YEARS = [2025, 2026, 2027, 2028, 2029];
 const POSITIONS = ['QB', 'RB', 'WR', 'TE'];
@@ -322,8 +337,9 @@ function ActivityReview({
   function confirmCut(id: string) {
     const c = contracts.find((x) => x.id === id);
     if (!c) return;
-    if (!confirm(`Cut ${c.playerName}? This removes the contract entirely. Only do this once you've verified in Fleaflicker that they're really gone — "not found" can also mean a data mismatch, not a real cut.`)) return;
-    setContracts(contracts.filter((x) => x.id !== id));
+    if (!confirm(`Cut ${c.playerName}? This converts their contract into a buyout — it'll keep counting against ${teamBySlug(c.team).name}'s cap for the years remaining, at 50% of each year's salary. Only do this once you've verified in Fleaflicker that they're really gone — "not found" can also mean a data mismatch, not a real cut.`)) return;
+    setContracts(contracts.map((x) => (x.id === id ? toBuyout(x, year) : x)));
+    setSyncSummary((s) => (s ? { ...s, proposedCuts: s.proposedCuts.filter((p) => p.id !== id) } : s));
   }
 
   function dismissCut(id: string) {
@@ -513,9 +529,10 @@ function TeamPage({
     [teamContracts, year]
   );
 
-  const active = withComputed.filter((r) => r.salary != null && !isTaxi(r.contract, year) && !isIR(r.contract, year));
-  const taxi = withComputed.filter((r) => r.salary != null && isTaxi(r.contract, year));
-  const ir = withComputed.filter((r) => r.salary != null && isIR(r.contract, year));
+  const active = withComputed.filter((r) => !isBuyout(r.contract) && r.salary != null && !isTaxi(r.contract, year) && !isIR(r.contract, year));
+  const taxi = withComputed.filter((r) => !isBuyout(r.contract) && r.salary != null && isTaxi(r.contract, year));
+  const ir = withComputed.filter((r) => !isBuyout(r.contract) && r.salary != null && isIR(r.contract, year));
+  const buyouts = withComputed.filter((r) => isBuyout(r.contract) && r.salary != null);
 
   const capUsed = teamCapUsed(teamContracts, year);
   const capSpace = teamCapSpace(teamContracts, year);
@@ -525,8 +542,10 @@ function TeamPage({
   }
 
   function cutContract(id: string) {
-    if (!confirm('Cut this player? This removes the contract entirely.')) return;
-    setContracts(contracts.filter((c) => c.id !== id));
+    const c = contracts.find((x) => x.id === id);
+    if (!c) return;
+    if (!confirm(`Cut ${c.playerName}? This converts their contract into a buyout — it'll keep counting against the cap for the years remaining, at 50% of each year's salary.`)) return;
+    setContracts(contracts.map((x) => (x.id === id ? toBuyout(x, year) : x)));
   }
 
   function tradeContract(id: string, newTeamSlug: string) {
@@ -753,13 +772,42 @@ function TeamPage({
         </section>
       )}
 
+      {buyouts.length > 0 && (
+        <section className="roster-section">
+          <h2 className="section-title">Buyouts</h2>
+          <p className="section-note">Cut players — no roster spot, but still counts against the cap until it runs out.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Buyout cost in {year}</th>
+                <th>Years left</th>
+              </tr>
+            </thead>
+            <tbody>
+              {buyouts.map(({ contract, salary, yearsLeft }) => (
+                <tr key={contract.id}>
+                  <td>
+                    {contract.playerName}
+                    <span className="badge">Buyout</span>
+                  </td>
+                  <td className="num">{money(salary)}</td>
+                  <td className="num">{yearsLeft}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
       {editMode && <AddContractForm onAdd={addContract} />}
 
       <p className="footnote">
         "Resign" projects the final contracted rate forward using the confirmed escalation increment for as
         many years as the player has been at that rate. This is a consistent anchor, not a market-value
-        forecast. Cut penalty: 50% of the player's current salary, applied across every remaining contract
-        year, rounded up once at the end.
+        forecast. A cut becomes a buyout: for every year that would have remained on the deal, 50% of that
+        year's own salary counts against the cap, rounded up per year — a $5 year becomes a $3 buyout year on
+        its own, not folded into one lump total.
       </p>
     </>
   );
