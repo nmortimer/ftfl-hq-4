@@ -4,25 +4,21 @@ import { teams } from '../src/data/teams.js';
 import type { Contract } from '../src/lib/contracts';
 
 /**
- * Name matching is intentionally aggressive about stripping formatting
- * differences — suffixes (Jr./Sr./II/III/IV) and punctuation are the most
- * common way the same real player fails to match between two data
- * sources. Stripping them from BOTH sides before comparing means
- * "Michael Pittman Jr." and "Michael Pittman Jr" and "Michael Pittman"
- * all normalize identically. Collision risk (two different active NFL
- * players sharing a name once suffixes are stripped) is negligible in
- * practice — the real, observed risk was the opposite: exact-match
- * failures wrongly cutting real players (Mahomes, Pittman, Etienne,
- * Penix, Walker all got wrongly cut by the old plain-lowercase version
- * of this function).
+ * Name matching strips suffixes/punctuation/accents from both sides
+ * before comparing — see README for why (this alone caused a real
+ * incident: "Michael Pittman Jr." vs "Michael Pittman" failing to match
+ * under a plain lowercase comparison). Genuine spelling typos in the
+ * original spreadsheet (a separate, second incident) were fixed at the
+ * source in realContracts.ts instead — this function can't fix those,
+ * only formatting differences.
  */
 function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // strip accents (é -> e, etc.)
-    .replace(/[.,'']/g, '') // strip periods, commas, apostrophes
-    .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '') // strip generational suffixes entirely
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[.,'']/g, '')
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -34,56 +30,53 @@ interface RosterInfo {
 }
 
 /**
- * CONFIRMED against a real response from this league (Nick pasted it
- * after the safety guard correctly refused to run on the old, wrong
- * shape). The actual structure: `{ rosters: [{ team, players: [{
- * proPlayer: { nameFull, ... } }] }] }` — flat, no groups/slots nesting
- * at all. The old code assumed a groups/slots wrapper borrowed from
- * FetchRoster's docs; that assumption was wrong, which is exactly what
- * produced 0 matches and triggered the safety guard.
+ * CONFIRMED against a real response — Nick fetched
+ * FetchRoster?sport=NFL&league_id=245051&team_id=1417685 directly and
+ * pasted the full result. Real shape: `{ groups: [{ group: "START" |
+ * "INJURED" | "TAXI" | undefined-for-bench, slots: [{ leaguePlayer: {
+ * proPlayer: { nameFull, ... } } }] }] }`. Verified directly against
+ * known players: Zach Charbonnet sits in the group with
+ * group:"INJURED", Cam Ward and Oscar Delp both sit in the group with
+ * group:"TAXI" — exactly matching what the contract data already said.
+ * This is the SINGLE-team endpoint (needs team_id), which is why it's
+ * called once per team below — team_id itself tells us team ownership,
+ * so this same call also replaces the old bulk FetchLeagueRosters logic
+ * for trades/cuts, not just taxi/IR.
  *
- * Still open: taxi/IR status per player. The sample that came back was
- * truncated before reaching that part of a player object, so isTaxi/isIR
- * below are a best-effort guess at a few plausible field names — if none
- * of them match, they safely default to false rather than guessing wrong
- * in the dangerous direction. If taxi/IR sync doesn't seem to be working,
- * that's the next thing to verify with one more real sample (ideally a
- * player who's actually on taxi or IR, so the differentiating field is
- * visible).
+ * If any one team's fetch fails, the whole sync aborts rather than
+ * silently treating that team's players as "not found" (which would
+ * read as mass cuts for just that team — exactly the kind of failure
+ * this file has hit twice before).
  */
 async function fetchRosterMap(leagueId: string, season: number): Promise<{ map: Map<string, RosterInfo>; rawSample: unknown }> {
-  const url = `https://www.fleaflicker.com/api/FetchLeagueRosters?sport=NFL&league_id=${leagueId}&season=${season}`;
-  const upstream = await fetch(url);
-  if (!upstream.ok) {
-    throw new Error(`Fleaflicker returned ${upstream.status}`);
-  }
-  const data = await upstream.json();
+  const results = await Promise.all(
+    teams.map(async (team) => {
+      const url = `https://www.fleaflicker.com/api/FetchRoster?sport=NFL&league_id=${leagueId}&team_id=${team.fleaflickerId}&season=${season}`;
+      const upstream = await fetch(url);
+      if (!upstream.ok) {
+        throw new Error(`FetchRoster failed for ${team.name} (HTTP ${upstream.status})`);
+      }
+      const data = await upstream.json();
+      return { team, data };
+    })
+  );
+
   const map = new Map<string, RosterInfo>();
-
-  const rosters = data?.rosters ?? [];
-  for (const rosterEntry of rosters) {
-    const teamName = rosterEntry?.team?.name;
-    const matchedTeam = teams.find((t) => t.name.trim().toLowerCase() === (teamName ?? '').trim().toLowerCase());
-    if (!matchedTeam) continue;
-
-    const players = rosterEntry?.players ?? [];
-    for (const player of players) {
-      const playerName = player?.proPlayer?.nameFull;
-      if (!playerName) continue;
-
-      // Best-effort guess at taxi/IR — see note above. Checks a few
-      // plausible shapes; defaults to false (not taxi, not IR) if none
-      // of them match anything.
-      const slotLabel = String(
-        player?.rosterSlot?.name ?? player?.rosterSlot?.label ?? player?.slot?.name ?? player?.status ?? ''
-      );
-      const isTaxi = /taxi/i.test(slotLabel) || player?.isTaxi === true;
-      const isIR = /injured|^ir$/i.test(slotLabel) || player?.isInjuredReserve === true;
-
-      map.set(normalize(playerName), { teamSlug: matchedTeam.slug, isTaxi, isIR });
+  for (const { team, data } of results) {
+    const groups = data?.groups ?? [];
+    for (const g of groups) {
+      const groupLabel = g?.group; // 'START' | 'INJURED' | 'TAXI' | undefined (bench)
+      const isTaxi = groupLabel === 'TAXI';
+      const isIR = groupLabel === 'INJURED';
+      const slots = g?.slots ?? [];
+      for (const slot of slots) {
+        const playerName = slot?.leaguePlayer?.proPlayer?.nameFull;
+        if (!playerName) continue; // empty bench slot, nothing to record
+        map.set(normalize(playerName), { teamSlug: team.slug, isTaxi, isIR });
+      }
     }
   }
-  return { map, rawSample: rosters[0] ?? data };
+  return { map, rawSample: results[0]?.data };
 }
 
 function isActiveThisYear(c: Contract, year: number): boolean {
@@ -116,24 +109,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // SAFETY GUARD: an empty or near-empty roster map means the response
-  // shape didn't match what this code expects — NOT that your whole
-  // league quit. Refuse to touch any data rather than mass-cut everyone
-  // on a parsing failure. (This is exactly what went wrong before this
-  // guard existed.)
-  if (rosterMap.size < 5) {
+  // shape didn't match what this code expects — refuse to touch any data
+  // rather than mass-cut everyone on a parsing failure.
+  if (rosterMap.size < 20) {
     return res.status(502).json({
-      error: `Fleaflicker's roster data only produced ${rosterMap.size} recognizable player(s) — that's almost certainly a parsing mismatch, not real data, so nothing was changed. Raw sample from the response: ${JSON.stringify(rawSample).slice(0, 2500)}`,
+      error: `Fleaflicker's roster data only produced ${rosterMap.size} recognizable player(s) across the whole league — that's almost certainly a parsing mismatch, not real data, so nothing was changed. Raw sample from one team's response: ${JSON.stringify(rawSample).slice(0, 2500)}`,
     });
   }
 
   const contracts = await getAllContracts();
   const summary = {
-    cuts: [] as string[],
     trades: [] as { name: string; from: string; to: string }[],
     taxiChanges: [] as string[],
     irChanges: [] as string[],
+    proposedCuts: [] as { id: string; playerName: string; team: string }[],
   };
 
+  // Trades and taxi/IR are now auto-applied and saved — the per-team
+  // endpoint's fields are confirmed against real data, not guessed.
+  // Cuts remain PROPOSALS ONLY: "not found on any roster" has caused two
+  // different real failures before (a name-matching bug, and what
+  // looked like incomplete roster data), so a cut is never applied
+  // automatically no matter how solid the rest of this looks — the
+  // commissioner confirms each one explicitly on the FA Review page.
   const updated: Contract[] = [];
   for (const c of contracts) {
     if (!isActiveThisYear(c, year)) {
@@ -143,13 +141,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const found = rosterMap.get(normalize(c.playerName));
     if (!found) {
-      // Not on ANY team's roster in Fleaflicker anymore — treat as cut.
-      summary.cuts.push(c.playerName);
-      continue; // omitted from `updated` = removed
+      summary.proposedCuts.push({ id: c.id, playerName: c.playerName, team: c.team });
+      updated.push(c); // NOT removed — stays exactly as-is until confirmed
+      continue;
     }
 
     const next: Contract = { ...c };
-
     if (found.teamSlug !== c.team) {
       summary.trades.push({ name: c.playerName, from: c.team, to: found.teamSlug });
       next.team = found.teamSlug;
@@ -178,17 +175,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     next.irYears = Array.from(irYears);
 
     updated.push(next);
-  }
-
-  // SAFETY GUARD #2: even with a healthy-sized roster map, refuse to save
-  // a result that cuts an implausible fraction of the active roster in
-  // one go — a real week never looks like this, a bad player-name match
-  // (accents, suffixes, "Jr."/"II", etc.) sometimes does.
-  const activeCount = contracts.filter((c) => isActiveThisYear(c, year)).length;
-  if (activeCount > 0 && summary.cuts.length / activeCount > 0.25) {
-    return res.status(502).json({
-      error: `This sync would cut ${summary.cuts.length} of ${activeCount} active players (over 25%) — that's far more than a normal week, so nothing was saved. This usually means player names aren't matching Fleaflicker's roster data correctly (e.g. "Jr."/suffixes, accents). Players it would have cut: ${summary.cuts.slice(0, 15).join(', ')}${summary.cuts.length > 15 ? '…' : ''}`,
-    });
   }
 
   try {
