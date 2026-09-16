@@ -408,6 +408,12 @@ td.num {
   border-color: var(--danger);
 }
 
+.badge.over-limit {
+  color: var(--danger);
+  border-color: var(--danger);
+  font-weight: 600;
+}
+
 .team-cell {
   display: flex;
   align-items: center;
