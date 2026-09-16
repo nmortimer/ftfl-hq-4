@@ -49,6 +49,7 @@ export interface BuyoutContract extends BaseContract {
 export type Contract = ImportedContract | FormulaContract | BuyoutContract;
 
 export const SALARY_CAP = 200;
+export const MAX_TAXI_SPOTS = 4;
 
 /** Confirmed rule: escalation tier is fixed by the salary at signing. */
 export function annualIncrement(baseSalary: number): number {
