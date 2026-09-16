@@ -12,7 +12,7 @@ import type { Contract } from '../src/lib/contracts';
  * source in realContracts.ts instead — this function can't fix those,
  * only formatting differences.
  */
-function normalize(s: string): string {
+export function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
@@ -59,7 +59,7 @@ async function fetchRosterMap(leagueId: string, season: number): Promise<{ map: 
   return { map, rawSample: rosters[0] ?? data };
 }
 
-interface ReserveStatus {
+export interface ReserveStatus {
   isTaxi: boolean;
   isIR: boolean;
 }
@@ -85,7 +85,7 @@ interface ReserveStatus {
  * with the LATEST timeEpochMilli matters — a player can cycle through
  * taxi/IR/active multiple times over a season.
  */
-async function fetchReserveStatusMap(leagueId: string): Promise<Map<string, ReserveStatus>> {
+export async function fetchReserveStatusMap(leagueId: string): Promise<Map<string, ReserveStatus>> {
   const pageSize = 30;
   const maxPages = 60; // covers up to 1800 activity items — safety cap, not expected to be hit under normal use
 
@@ -219,28 +219,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       next.team = found.teamSlug;
     }
 
-    const reserve = reserveMap.get(normalize(c.playerName)) ?? { isTaxi: false, isIR: false };
+    // Only reconcile taxi/IR if we actually found reserve-change history for
+    // this player in the activity feed. Absence of an event is NOT the same
+    // as "confirmed not on taxi/IR" — a player's taxi/IR status set during
+    // initial preseason roster construction may never generate a
+    // reserveChange item at all, so finding nothing here just means "no
+    // signal," and the previous code was treating that as "definitely
+    // active," silently clearing real taxi/IR designations that had no
+    // sync history to confirm OR deny them. Real incident: Boulder's Cam
+    // Ward/Oscar Delp and South Bend's Kyle Williams all lost their taxi
+    // flag this way, each one wrongly added back into cap-used totals.
+    const reserve = reserveMap.get(normalize(c.playerName));
 
     const taxiYears = new Set(c.taxiYears ?? []);
-    const wasTaxi = taxiYears.has(year);
-    if (reserve.isTaxi && !wasTaxi) {
-      taxiYears.add(year);
-      summary.taxiChanges.push(`${c.playerName} → taxi`);
-    } else if (!reserve.isTaxi && wasTaxi) {
-      taxiYears.delete(year);
-      summary.taxiChanges.push(`${c.playerName} → off taxi`);
-    }
-    next.taxiYears = Array.from(taxiYears);
-
     const irYears = new Set(c.irYears ?? []);
-    const wasIR = irYears.has(year);
-    if (reserve.isIR && !wasIR) {
-      irYears.add(year);
-      summary.irChanges.push(`${c.playerName} → IR`);
-    } else if (!reserve.isIR && wasIR) {
-      irYears.delete(year);
-      summary.irChanges.push(`${c.playerName} → off IR`);
+
+    if (reserve) {
+      const wasTaxi = taxiYears.has(year);
+      if (reserve.isTaxi && !wasTaxi) {
+        taxiYears.add(year);
+        summary.taxiChanges.push(`${c.playerName} → taxi`);
+      } else if (!reserve.isTaxi && wasTaxi) {
+        taxiYears.delete(year);
+        summary.taxiChanges.push(`${c.playerName} → off taxi`);
+      }
+
+      const wasIR = irYears.has(year);
+      if (reserve.isIR && !wasIR) {
+        irYears.add(year);
+        summary.irChanges.push(`${c.playerName} → IR`);
+      } else if (!reserve.isIR && wasIR) {
+        irYears.delete(year);
+        summary.irChanges.push(`${c.playerName} → off IR`);
+      }
     }
+    // else: no reserve-change history found at all for this player —
+    // leave taxiYears/irYears completely untouched, whatever they already were.
+
+    next.taxiYears = Array.from(taxiYears);
     next.irYears = Array.from(irYears);
 
     updated.push(next);
